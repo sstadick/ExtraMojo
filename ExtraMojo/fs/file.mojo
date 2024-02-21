@@ -173,7 +173,6 @@ struct FileReader:
     """
     WIP FileReader for readying lines and bytes from a file in a buffered way.
     """
-
     var fh: FileHandle
     var file_offset: Int
     var buffer_offset: Int
