@@ -1,86 +1,90 @@
 """
 Helper functions for working with files
 """
-from algorithm import vectorize
+from algorithm.functional import vectorize
 from collections import Optional
+from tensor import Tensor
 
-from ExtraMojo.tensor.slice import slice_tensor_simd, slice_tensor_iter, slice_tensor
+from ExtraMojo.tensor.slice import (
+    slice_tensor_simd,
+    slice_tensor_iter,
+    slice_tensor,
+)
 
 alias USE_SIMD = True
 alias NEW_LINE = 10
-alias SIMD_I8_WIDTH: Int = simdwidthof[DType.int8]()
+alias SIMD_U8_WIDTH: Int = simdwidthof[DType.uint8]()
 alias BUF_SIZE: Int = 1024 * 64
 
 
 @always_inline
 fn find_chr_all_occurances[
     T: DType
-](in_tensor: Tensor[T], chr: Int) -> DynamicVector[Int]:
+](in_tensor: Tensor[T], chr: Int) -> List[Int]:
     """
     Find all the occurances of `chr` in the input buffer.
     """
-    var holder = DynamicVector[Int]()
+    var holder = List[Int]()
 
     @parameter
     fn inner[simd_width: Int](size: Int):
-        let simd_vec = in_tensor.simd_load[simd_width](size)
-        let bool_vec = simd_vec == chr
+        var simd_vec = in_tensor.load[width=simd_width](size)
+        var bool_vec = simd_vec == chr
         if bool_vec.reduce_or():
-
-            @unroll
             for i in range(len(bool_vec)):
                 if bool_vec[i]:
-                    holder.push_back(size + i)
+                    holder.append(size + i)
 
-    vectorize[SIMD_I8_WIDTH, inner](in_tensor.num_elements())
+    vectorize[inner, SIMD_U8_WIDTH](in_tensor.num_elements())
     return holder
 
 
 fn read_lines(
     path: String, buf_size: Int = BUF_SIZE
-) raises -> DynamicVector[Tensor[DType.int8]]:
+) raises -> List[Tensor[DType.uint8]]:
     """
     Read all the lines in the file and return them as a [`DynamicVector`] of [`Tensor[DType.int8]`].
     """
-    let fh = open(path, "r")
-    var result = DynamicVector[Tensor[DType.int8]]()
+    var fh = open(path, "r")
+    var result = List[Tensor[DType.uint8]]()
     var file_pos = 0
 
     while True:
         _ = fh.seek(file_pos)
-        let buffer = fh.read_bytes(buf_size)
-        let newlines = find_chr_all_occurances(buffer, NEW_LINE)
+        var buffer = fh.read_bytes(buf_size)
+        var newlines = find_chr_all_occurances(buffer, NEW_LINE)
         var start = 0
         for i in range(0, len(newlines)):
-            let newline = newlines[i]
+            var newline = newlines[i]
             result.append(slice_tensor(buffer, start, newline))
             start = newline + 1
 
-        if buffer.num_elements() < BUF_SIZE:
+        if len(buffer) < BUF_SIZE:
             break
         file_pos += start
     return result
 
 
 fn for_each_line[
-    func: fn (Tensor[DType.int8], Int, Int) capturing -> None
+    func: fn (Tensor[DType.uint8], Int, Int) capturing -> None
 ](path: String, buf_size: Int = BUF_SIZE) raises:
     """
     Call the provided callback on each line.
 
     The callback will be given a buffer, and the [start, end) of where the line is in that buffer.
     """
-    let fh = open(path, "r")
-    var result = DynamicVector[Tensor[DType.int8]]()
+    var fh = open(path, "r")
     var file_pos = 0
 
     while True:
         _ = fh.seek(file_pos)
-        let buffer = fh.read_bytes(buf_size)
+        var buffer = fh.read_bytes(buf_size)
         var buffer_index = 0
 
         while True:
-            let newline = find_chr_next_occurance_simd(buffer, NEW_LINE, buffer_index)
+            var newline = find_chr_next_occurance_simd(
+                buffer, NEW_LINE, buffer_index
+            )
             if newline == -1:
                 break
 
@@ -88,7 +92,7 @@ fn for_each_line[
             buffer_index = newline + 1
 
         file_pos += buffer_index
-        if buffer.num_elements() < BUF_SIZE:
+        if len(buffer) < BUF_SIZE:
             break
 
 
@@ -108,12 +112,12 @@ fn find_chr_next_occurance_simd[
     Function to find the next occurance of character using SIMD instruction.
     The function assumes that the tensor is always in-bounds. any bound checks should be in the calling function.
     """
-    let len = in_tensor.num_elements() - start
-    let aligned = start + math.align_down(len, SIMD_I8_WIDTH)
+    var len = in_tensor.num_elements() - start
+    var aligned = start + math.align_down(len, SIMD_U8_WIDTH)
 
-    for s in range(start, aligned, SIMD_I8_WIDTH):
-        let v = in_tensor.simd_load[SIMD_I8_WIDTH](s)
-        let mask = v == chr
+    for s in range(start, aligned, SIMD_U8_WIDTH):
+        var v = in_tensor.load[width=SIMD_U8_WIDTH](s)
+        var mask = v == chr
         if mask.reduce_or():
             return s + arg_true(mask)
 
@@ -154,14 +158,18 @@ fn get_next_line[
 
     @parameter
     if USE_SIMD:
-        var next_line_pos = find_chr_next_occurance_simd(in_tensor, NEW_LINE, in_start)
+        var next_line_pos = find_chr_next_occurance_simd(
+            in_tensor, NEW_LINE, in_start
+        )
         if next_line_pos == -1:
             next_line_pos = (
                 in_tensor.num_elements()
             )  # If no line separator found, return the reminder of the string, behaviour subject to change
         return slice_tensor_simd(in_tensor, in_start, next_line_pos)
     else:
-        var next_line_pos = find_chr_next_occurance_iter(in_tensor, NEW_LINE, in_start)
+        var next_line_pos = find_chr_next_occurance_iter(
+            in_tensor, NEW_LINE, in_start
+        )
         if next_line_pos == -1:
             next_line_pos = (
                 in_tensor.num_elements()
@@ -173,29 +181,32 @@ struct FileReader:
     """
     WIP FileReader for readying lines and bytes from a file in a buffered way.
     """
+
     var fh: FileHandle
     var file_offset: Int
     var buffer_offset: Int
-    var buffer: Tensor[DType.int8]
+    var buffer: List[UInt8]
     var buffer_size: Int
 
-    fn __init__(inout self, owned fh: FileHandle, buffer_size: Int = BUF_SIZE) raises:
-        let buffer = fh.read_bytes(buffer_size)
-        self.fh = fh ^
+    fn __init__(
+        inout self, owned fh: FileHandle, buffer_size: Int = BUF_SIZE
+    ) raises:
+        var buffer = fh.read_bytes(buffer_size)
+        self.fh = fh^
         self.file_offset = 0
         self.buffer_offset = 0
         self.buffer_size = buffer_size
         self.buffer = buffer
 
     fn read_until(
-        inout self, inout line_buffer: DynamicVector[Int8], char: Int = NEW_LINE
+        inout self, inout line_buffer: List[UInt8], char: Int = NEW_LINE
     ) raises -> Int:
         """
         Fill the given `line_buffer` until the given `char` is hit.
 
         This does not include the `char`. The input vector is cleared before reading into it.
         """
-        if self.buffer.num_elements() == 0:
+        if len(self.buffer) == 0:
             return 0
 
         # Find the next newline in the buffer
@@ -206,7 +217,7 @@ struct FileReader:
         # Try to refill the buffer
         if newline_index == -1:
             self.file_offset += self.buffer_offset
-            let bytes_filled = self._fill_buffer()
+            var bytes_filled = self._fill_buffer()
             if bytes_filled == 0:
                 return 0
             newline_index = find_chr_next_occurance_simd(
@@ -229,4 +240,4 @@ struct FileReader:
         _ = self.fh.seek(self.file_offset)
         self.buffer = self.fh.read_bytes(self.buffer_size)
         self.buffer_offset = 0
-        return self.buffer.num_elements()
+        return len(self.buffer)

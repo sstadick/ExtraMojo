@@ -1,4 +1,5 @@
-from algorithm import vectorize
+from algorithm.functional import vectorize
+from tensor import Tensor
 
 
 @always_inline
@@ -19,7 +20,9 @@ fn slice_tensor[
 
 
 @always_inline
-fn slice_tensor_simd[T: DType](in_tensor: Tensor[T], start: Int, end: Int) -> Tensor[T]:
+fn slice_tensor_simd[
+    T: DType
+](in_tensor: Tensor[T], start: Int, end: Int) -> Tensor[T]:
     """
     Generic Function that returns a python-style tensor slice from start till end (not inclusive).
     """
@@ -28,16 +31,18 @@ fn slice_tensor_simd[T: DType](in_tensor: Tensor[T], start: Int, end: Int) -> Te
 
     @parameter
     fn inner[simd_width: Int](size: Int):
-        let transfer = in_tensor.simd_load[simd_width](start + size)
-        out_tensor.simd_store[simd_width](size, transfer)
+        var transfer = in_tensor.load[width=simd_width](start + size)
+        out_tensor.store[width=simd_width](size, transfer)
 
-    vectorize[simdwidthof[T](), inner](out_tensor.num_elements())
+    vectorize[inner, simdwidthof[T]()](out_tensor.num_elements())
 
     return out_tensor
 
 
 @always_inline
-fn slice_tensor_iter[T: DType](in_tensor: Tensor[T], start: Int, end: Int) -> Tensor[T]:
+fn slice_tensor_iter[
+    T: DType
+](in_tensor: Tensor[T], start: Int, end: Int) -> Tensor[T]:
     """
     Generic Function that returns a python-style tensor slice from start till end (not inclusive).
     """

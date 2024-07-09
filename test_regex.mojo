@@ -14,25 +14,25 @@ fn main() raises:
 
 
 fn test_start_anchor() raises:
-    let re = "^cat"
+    var re = "^cat"
     assert_true(is_match(re, "cats of a feather"))
     assert_false(is_match(re, "bird cats of a cat"))
 
 
 fn test_end_anchor() raises:
-    let re = "what$"
+    var re = "what$"
     assert_true(is_match(re, "It is what"))
     assert_false(is_match(re, "what is in the box"))
 
 
 fn test_dot() raises:
-    let re = "w.t"
+    var re = "w.t"
     assert_true(is_match(re, "Is that a witty remark?"))
     assert_false(is_match(re, "wt is that what thing there"))
 
 
 fn test_star() raises:
-    let re = "wha*"
+    var re = "wha*"
     assert_true(is_match(re, "what am I doing here"))
     assert_true(is_match(re, "whaaaaaaat am I doing here"))
     assert_true(is_match(re, "wht am I doing here"))
@@ -40,14 +40,14 @@ fn test_star() raises:
 
 
 fn test_literal() raises:
-    let re = "ACTG"
+    var re = "ACTG"
     assert_true(is_match(re, "TGGGACTGCCCACTG"))
     assert_true(is_match(re, "CTGGGACGCCCACTG"))
     assert_false(is_match(re, "CTGGGACGCCCACG"))
 
 
 fn test_dot_star() raises:
-    let re = "STAR.*"
+    var re = "STAR.*"
     assert_true(is_match(re, "STAR"))
     assert_true(is_match(re, "I'M A STAR"))
     assert_true(is_match(re, "I'M A STARXXXXXXX"))

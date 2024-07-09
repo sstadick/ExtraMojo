@@ -19,8 +19,8 @@ fn is_match(regexp: String, text: String) -> Bool:
     """
     # Currently `_buffer` returns the underlying bytes of the string, with a null terminator
     # We use the ptr because there is no implemenation of slice yet
-    var re = regexp._as_ptr()
-    var txt = text._as_ptr()
+    var re = regexp.unsafe_uint8_ptr()
+    var txt = text.unsafe_uint8_ptr()
 
     if re[0] == START_ANCHOR:
         return is_match_here(re + 1, txt)
@@ -29,7 +29,6 @@ fn is_match(regexp: String, text: String) -> Bool:
         # Must look even if string is empty
         if is_match_here(re, txt):
             return True
-        let x = txt[0]
         if txt[0] == NULL:
             break
         txt += 1
@@ -38,7 +37,7 @@ fn is_match(regexp: String, text: String) -> Bool:
 
 
 fn is_match_here(
-    regexp: DTypePointer[DType.int8], text: DTypePointer[DType.int8]
+    regexp: UnsafePointer[UInt8], text: UnsafePointer[UInt8]
 ) -> Bool:
     """
     Search for regexp at beginning of text.
@@ -55,7 +54,7 @@ fn is_match_here(
 
 
 fn is_match_star(
-    c: Int8, regexp: DTypePointer[DType.int8], text: DTypePointer[DType.int8]
+    c: UInt8, regexp: UnsafePointer[UInt8], text: UnsafePointer[UInt8]
 ) -> Bool:
     """
     Search for c*regexp at beginning of text.
