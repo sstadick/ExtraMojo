@@ -209,7 +209,7 @@ struct FileReader:
 
         This does not include the `char`. The input vector is cleared before reading into it.
         """
-        if len(self.buffer) == 0:
+        if self.buffer.num_elements() == 0:
             return 0
 
         # Find the next newline in the buffer
@@ -243,4 +243,4 @@ struct FileReader:
         _ = self.fh.seek(self.file_offset)
         self.buffer = self.fh.read_bytes(self.buffer_size)
         self.buffer_offset = 0
-        return len(self.buffer)
+        return self.buffer.num_elements()

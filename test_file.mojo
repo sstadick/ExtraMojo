@@ -1,7 +1,6 @@
 from pathlib import Path
 from python import Python
 from testing import *
-from pathlib.path import Path
 
 from ExtraMojo.fs.file import FileReader
 
