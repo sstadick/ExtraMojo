@@ -1,8 +1,10 @@
 """
 Helper functions for working with files
 """
-from algorithm.functional import vectorize
+import math
+from algorithm import vectorize
 from collections import Optional
+from sys.info import simdwidthof
 from tensor import Tensor
 
 from ExtraMojo.tensor.slice import (
@@ -31,6 +33,7 @@ fn find_chr_all_occurances[
         var simd_vec = in_tensor.load[width=simd_width](size)
         var bool_vec = simd_vec == chr
         if bool_vec.reduce_or():
+            # TODO: @unroll
             for i in range(len(bool_vec)):
                 if bool_vec[i]:
                     holder.append(size + i)
@@ -74,6 +77,7 @@ fn for_each_line[
     The callback will be given a buffer, and the [start, end) of where the line is in that buffer.
     """
     var fh = open(path, "r")
+    # var result = List[Tensor[DType.int8]]()
     var file_pos = 0
 
     while True:
@@ -107,13 +111,13 @@ fn arg_true[simd_width: Int](v: SIMD[DType.bool, simd_width]) -> Int:
 @always_inline
 fn find_chr_next_occurance_simd[
     T: DType
-](in_tensor: Tensor[T], chr: Int, start: Int = 0) -> Int:
+](in_tensor: Tensor[T], chr: UInt, start: Int = 0) -> Int:
     """
-    Function to find the next occurance of character using SIMD instruction.
+    Function to find the next occurrence of character using SIMD instruction.
     The function assumes that the tensor is always in-bounds. any bound checks should be in the calling function.
     """
-    var len = in_tensor.num_elements() - start
-    var aligned = start + math.align_down(len, SIMD_U8_WIDTH)
+    var tensor_len = in_tensor.num_elements() - start
+    var aligned = start + math.align_down(tensor_len, SIMD_U8_WIDTH)
 
     for s in range(start, aligned, SIMD_U8_WIDTH):
         var v = in_tensor.load[width=SIMD_U8_WIDTH](s)
@@ -151,7 +155,6 @@ fn get_next_line[
 
     var in_start = start
     while in_tensor[in_start] == NEW_LINE:  # Skip leadin \n
-        print("skipping \n")
         in_start += 1
         if in_start >= in_tensor.num_elements():
             return Tensor[T](0)
@@ -185,7 +188,7 @@ struct FileReader:
     var fh: FileHandle
     var file_offset: Int
     var buffer_offset: Int
-    var buffer: List[UInt8]
+    var buffer: Tensor[DType.uint8]
     var buffer_size: Int
 
     fn __init__(
@@ -199,7 +202,7 @@ struct FileReader:
         self.buffer = buffer
 
     fn read_until(
-        inout self, inout line_buffer: List[UInt8], char: Int = NEW_LINE
+        inout self, inout line_buffer: List[UInt8], char: UInt = NEW_LINE
     ) raises -> Int:
         """
         Fill the given `line_buffer` until the given `char` is hit.

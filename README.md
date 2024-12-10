@@ -2,22 +2,26 @@
 
 Extra functionality to extend the Mojo std lib.
 
+*Supports mojo 24.5.0 (e8aacb9)*
 
-## Usage
+## Install / Usage
+
+See docs for [numojo](https://github.com/Mojo-Numerics-and-Algorithms-group/NuMojo/tree/v0.3?tab=readme-ov-file#how-to-install) and just do that for this package until Mojo has true package / library support.
+
+tl;dr;
+
+In your project `mojo run -I "../ExtraMojo" my_example_file.mojo`.
+Not the bit about how to add this project to your LSP so things resolve in VSCode.
+
+
+## Tasks
 
 ```
-mojo package ./ExtraMojo
-# Then, from wherever you want to use this package
-mojo run -I <path to here>/ExtraMojo <your code>
-```
-
-## Testing
-
-```
-mojo package ./ExtraMojo && mojo run -I ./ExtraMojo test_file.mojo
-mojo package ./ExtraMojo && mojo run -I ./ExtraMojo test_regex.mojo
+magic run test
+magic run format
+magic run build
 ```
 
 ## Attribution
 
-- Much of the first draft of the File and Tensor code was taken from [here](https://github.com/MoSafi2/MojoFastTrim/tree/restructed)
+- Much of the first draft of the File and Tensor code was taken from [here](https://github.com/MoSafi2/MojoFastTrim/tree/restructed), which has now moved [here](https://github.com/MoSafi2/BlazeSeq).
