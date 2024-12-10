@@ -26,16 +26,48 @@ magic run build
 
 Reading a file line by line.
 ```mojo
-from ExtraMojo.fs.file import FileReader
+from ExtraMojo.fs.file import FileReader, read_lines, for_each_line
+from ExtraMojo.tensor import slice_tensor
 
-var fh = open(file, "r")
-var reader = FileReader(fh^, buffer_size=1024)
-var buffer = List[UInt8]()
-var counter = 0
-while reader.read_until(buffer) != 0: # Note read until defaults to b'\n', but you can pass in any other delim.
-    assert_equal(expected_lines[counter].as_bytes(), buffer)
-    counter += 1
-assert_equal(counter, len(expected_lines))
+fn test_read_until(file: Path, expected_lines: List[String]) raises:
+    var fh = open(file, "r")
+    var reader = FileReader(fh^, buffer_size=1024)
+    var buffer = List[UInt8]()
+    var counter = 0
+    while reader.read_until(buffer) != 0:
+        assert_equal(expected_lines[counter].as_bytes(), buffer)
+        counter += 1
+    assert_equal(counter, len(expected_lines))
+    print("Successful read_until")
+
+
+fn test_read_lines(file: Path, expected_lines: List[String]) raises:
+    var lines = read_lines(str(file))
+    assert_equal(len(lines), len(expected_lines))
+    for i in range(0, len(lines)):
+        assert_equal(lines[i], expected_lines[i].as_bytes())
+    print("Successful read_lines")
+
+
+fn test_for_each_line(file: Path, expected_lines: List[String]) raises:
+    var counter = 0
+    var found_bad = False
+
+    @parameter
+    fn inner(
+        buffer: Tensor[DType.uint8], start: Int, end: Int
+    ) capturing -> None:
+        if (
+            slice_tensor(buffer, start, end)
+            != expected_lines[counter].as_bytes()
+        ):
+            found_bad = True
+        counter += 1
+
+    for_each_line[inner](str(file))
+    assert_false(found_bad)
+    print("Successful for_each_line")
+
 ```
 
 Simple Regex
