@@ -1,4 +1,5 @@
-from algorithm.functional import vectorize
+from algorithm import vectorize
+from sys.info import simdwidthof
 from tensor import Tensor
 
 
@@ -31,8 +32,8 @@ fn slice_tensor_simd[
 
     @parameter
     fn inner[simd_width: Int](size: Int):
-        var transfer = in_tensor.load[simd_width](start + size)
-        out_tensor.store[simd_width](size, transfer)
+        var transfer = in_tensor.load[width=simd_width](start + size)
+        out_tensor.store[width=simd_width](size, transfer)
 
     vectorize[inner, simdwidthof[T]()](out_tensor.num_elements())
 
