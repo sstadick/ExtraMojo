@@ -12,7 +12,7 @@ struct Bench:
     var name: String
     var max_iterations: Int
     var warmup_iterations: Int
-    var func: fn () escaping raises -> None
+    # var func: fn () escaping raises
 
     # fn __init__(
     #     inout self,
@@ -36,13 +36,13 @@ struct Bench:
         else:
             return str(microseconds) + " µs"
 
-    fn benchmark(self) raises:
+    fn benchmark[func: fn () capturing raises -> None](self) raises:
         print("========================================")
         print("Benchmarking ", self.name)
         print("Warming up... ", self.warmup_iterations, " iterations")
         var warmup_start = perf_counter_ns()
         for _ in range(self.warmup_iterations):
-            self.func()
+            func()
         var warmup_end = perf_counter_ns()
         print("--> ", self.format_nice_time(warmup_end - warmup_start))
 
@@ -55,7 +55,7 @@ struct Bench:
         var total_elapsed = 0.0
         while True:
             var begin = perf_counter_ns()
-            self.func()
+            func()
             var elapsed = perf_counter_ns() - begin
             times.append(elapsed)
             sum += elapsed
