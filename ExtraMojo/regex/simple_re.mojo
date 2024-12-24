@@ -4,7 +4,7 @@ A very simple regex implemenation in Mojo inspired by Rob Pikes implementation.
 https://www.cs.princeton.edu/courses/archive/spr09/cos333/beautiful.html
 """
 from builtin.dtype import DType
-from utils import Span
+from memory import Span
 
 alias START_ANCHOR = ord("^")
 alias END_ANCHOR = ord("$")
@@ -17,8 +17,8 @@ fn is_match(regexp: String, text: String) -> Bool:
     """
     Search for regexp anywhere in text and return true if it matches.
     """
-    var re = regexp.as_bytes_slice()
-    var txt = text.as_bytes_slice()
+    var re = regexp.as_bytes()
+    var txt = text.as_bytes()
 
     if re[0] == START_ANCHOR:
         return is_match_here(re[1:], txt)

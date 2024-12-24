@@ -27,7 +27,7 @@ fn test_read_until(file: Path, expected_lines: List[String]) raises:
     var buffer = List[UInt8]()
     var counter = 0
     while reader.read_until(buffer) != 0:
-        assert_equal(expected_lines[counter].as_bytes(), buffer)
+        assert_equal(List(expected_lines[counter].as_bytes()), buffer)
         counter += 1
     assert_equal(counter, len(expected_lines))
     print("Successful read_until")
@@ -37,7 +37,7 @@ fn test_read_lines(file: Path, expected_lines: List[String]) raises:
     var lines = read_lines(str(file))
     assert_equal(len(lines), len(expected_lines))
     for i in range(0, len(lines)):
-        assert_equal(lines[i], expected_lines[i].as_bytes())
+        assert_equal(lines[i], List(expected_lines[i].as_bytes()))
     print("Successful read_lines")
 
 
@@ -49,9 +49,8 @@ fn test_for_each_line(file: Path, expected_lines: List[String]) raises:
     fn inner(
         buffer: Tensor[DType.uint8], start: Int, end: Int
     ) capturing -> None:
-        if (
-            slice_tensor(buffer, start, end)
-            != expected_lines[counter].as_bytes()
+        if slice_tensor(buffer, start, end) != List(
+            expected_lines[counter].as_bytes()
         ):
             found_bad = True
         counter += 1
