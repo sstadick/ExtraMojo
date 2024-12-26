@@ -2,7 +2,7 @@
 
 Extra functionality to extend the Mojo std lib.
 
-*Supports mojo 24.5.0 (e8aacb9)*
+*Supports mojo 24.6.0*
 
 ## Install / Usage
 
