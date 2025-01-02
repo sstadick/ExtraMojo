@@ -1,11 +1,12 @@
-from ExtraMojo.bstr.bstr import SplitIterator, find
+from ExtraMojo.bstr.bstr import SplitIterator, find, to_ascii_lowercase_simd
 from memory import Span
 from testing import *
 
 
 fn main() raises:
-    test_iterator()
+    test_spilt_iterator()
     test_find()
+    test_lowercase()
 
 
 fn s(bytes: Span[UInt8]) -> String:
@@ -15,6 +16,16 @@ fn s(bytes: Span[UInt8]) -> String:
     return buffer
 
 
+fn test_lowercase() raises:
+    var example = List(
+        "ABCdefgHIjklmnOPQRSTUVWXYZ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;ABCdefgHIjklmnOPQRSTUVWXYZ"
+        .as_bytes()
+    )
+    var answer = "abcdefghijklmnopqrstuvwxyz;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;abcdefghijklmnopqrstuvwxyz"
+    to_ascii_lowercase_simd(example)
+    assert_equal(s(example), s(answer.as_bytes()))
+
+
 fn test_find() raises:
     var haystack = "ABCDEFGhijklmnop".as_bytes()
     var expected = 4
@@ -22,7 +33,7 @@ fn test_find() raises:
     assert_equal(answer, expected)
 
 
-fn test_iterator() raises:
+fn test_spilt_iterator() raises:
     var input = "ABCD\tEFGH\tIJKL\nMNOP".as_bytes()
     var expected = List(
         "ABCD".as_bytes(), "EFGH".as_bytes(), "IJKL\nMNOP".as_bytes()
