@@ -1,6 +1,7 @@
 import math
+from algorithm import vectorize
 from collections import Optional
-from memory import Span
+from memory import Span, UnsafePointer
 from sys.info import simdwidthof
 
 
@@ -20,20 +21,51 @@ fn arg_true[simd_width: Int](v: SIMD[DType.bool, simd_width]) -> Int:
 
 
 @always_inline
-fn find_chr_next_occurance_simd(
+fn find_chr_all_occurrences(haystack: Span[UInt8], chr: UInt8) -> List[Int]:
+    """Find all the occurrences of `chr` in the input buffer."""
+    var holder = List[Int]()
+
+    if len(haystack) < SIMD_U8_WIDTH:
+        for i in range(0, len(haystack)):
+            if haystack[i] == chr:
+                holder.append(i)
+        return holder
+
+    @parameter
+    fn inner[simd_width: Int](offset: Int):
+        var simd_vec = haystack.unsafe_ptr().load[width=simd_width](offset)
+        var bool_vec = simd_vec == chr
+        if bool_vec.reduce_or():
+            # TODO: @unroll
+            for i in range(len(bool_vec)):
+                if bool_vec[i]:
+                    holder.append(offset + i)
+
+    vectorize[inner, SIMD_U8_WIDTH](len(haystack))
+    return holder
+
+
+@always_inline
+fn find_chr_next_occurrence_simd(
     haystack: Span[UInt8], chr: UInt8, start: Int = 0
 ) -> Int:
     """
     Function to find the next occurrence of character using SIMD instruction.
     The function assumes that the tensor is always in-bounds. any bound checks should be in the calling function.
     """
+    if len(haystack) < SIMD_U8_WIDTH:
+        for i in range(0, len(haystack)):
+            if haystack[i] == chr:
+                return i
+        return -1
+
     var haystack_len = len(haystack) - start
     var aligned = start + math.align_down(haystack_len, SIMD_U8_WIDTH)
 
     for s in range(start, aligned, SIMD_U8_WIDTH):
         var v = haystack[s:].unsafe_ptr().load[width=SIMD_U8_WIDTH]()
         var mask = v == chr
-        if mask.reduce_or():
+        if any(mask):
             return s + arg_true(mask)
 
     for i in range(aligned, len(haystack)):
@@ -43,10 +75,46 @@ fn find_chr_next_occurance_simd(
     return -1
 
 
+alias CAPITAL_A = SIMD[DType.uint8, SIMD_U8_WIDTH](ord("A"))
+alias CAPITAL_Z = SIMD[DType.uint8, SIMD_U8_WIDTH](ord("Z"))
+alias TO_LOWER_DIFF = SIMD[DType.uint8, SIMD_U8_WIDTH](ord("a") - ord("A"))
+alias ZERO = SIMD[DType.uint8, SIMD_U8_WIDTH](0)
+
+
+@always_inline
+fn to_ascii_lowercase_simd(mut buffer: List[UInt8]):
+    """Lowercase all ascii a-zA-Z characters."""
+    if len(buffer) < SIMD_U8_WIDTH:
+        for i in range(0, len(buffer)):
+            var value = buffer[i]
+            buffer[i] = (
+                value + 32 if value >= ord("A") and value <= ord("Z") else value
+            )
+        return
+
+    var buffer_len = len(buffer)
+    var aligned = math.align_down(buffer_len, SIMD_U8_WIDTH)
+    var buf = Span(buffer)
+
+    for s in range(0, aligned, SIMD_U8_WIDTH):
+        var v = buf[s:].unsafe_ptr().load[width=SIMD_U8_WIDTH]()
+        var ge_A = v >= CAPITAL_A
+        var le_Z = v <= CAPITAL_Z
+        var is_upper = ge_A.__and__(le_Z)
+        var answer = is_upper.select(v + TO_LOWER_DIFF, v)
+        buffer.unsafe_ptr().store(s, answer)
+
+    for i in range(aligned, len(buffer)):
+        var value = buffer[i]
+        buffer[i] = (
+            value + 32 if value >= ord("A") and value <= ord("Z") else value
+        )
+
+
 fn find(haystack: Span[UInt8], needle: Span[UInt8]) -> Optional[Int]:
     """Look for the substring `needle` in the haystack.
 
-    This returns the index of the start of the first occurance of needle.
+    This returns the index of the start of the first occurrence of needle.
     """
     # TODO: memchr/memmem probably
     # https://github.com/BurntSushi/bstr/blob/master/src/ext_slice.rs#L3094
@@ -56,7 +124,7 @@ fn find(haystack: Span[UInt8], needle: Span[UInt8]) -> Optional[Int]:
     # check for extension, and move forward
     var start = 0
     while start < len(haystack):
-        start = find_chr_next_occurance_simd(haystack, needle[0], start)
+        start = find_chr_next_occurrence_simd(haystack, needle[0], start)
         if start == -1:
             return None
         # Try extension
@@ -108,6 +176,7 @@ struct SplitIterator[is_mutable: Bool, //, origin: Origin[is_mutable]]:
 
     fn __next__(mut self) -> Span[UInt8, origin]:
         var ret = self.next_split.value()
+
         self._find_next_split()
         return self.inner[ret.start : ret.end]
 
@@ -117,11 +186,9 @@ struct SplitIterator[is_mutable: Bool, //, origin: Origin[is_mutable]]:
             self.len = 0
             return
 
-        var end = -1
-        for i in range(self.current, len(self.inner)):
-            if self.inner[i] == self.split_on:
-                end = i
-                break
+        var end = find_chr_next_occurrence_simd(
+            self.inner, self.split_on, self.current
+        )
 
         if end != -1:
             self.next_split = _StartEnd(self.current, end)
