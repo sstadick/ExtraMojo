@@ -4,11 +4,11 @@ channels = ["conda-forge", "https://conda.modular.com/max"]
 description = "Useful things that aren't in the standard library."
 name = "ExtraMojo"
 platforms = ["osx-arm64"]
-version = "0.1.0"
+version = "0.2.0"
 
 [tasks]
-build = "magic run mojo package src -o ExtraMojo.mojopkg"
-test = "magic run mojo test test_regex.mojo && mojo run test_file.mojo"
+build = "magic run mojo package ExtraMojo -o ExtraMojo.mojopkg"
+test = "magic run mojo test test_regex.mojo && mojo run test_file.mojo && mojo run test_bstr.mojo"
 format = "magic run mojo format ./"
 
 [dependencies]

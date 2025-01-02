@@ -1,10 +1,17 @@
+from memory import Span
 from pathlib import Path
 from python import Python
 from tensor import Tensor
 from testing import *
 
 from ExtraMojo.fs.file import FileReader, read_lines, for_each_line
-from ExtraMojo.tensor import slice_tensor
+
+
+fn s(bytes: Span[UInt8]) -> String:
+    """Convert bytes to a String."""
+    var buffer = String()
+    buffer.write_bytes(bytes)
+    return buffer
 
 
 fn create_file(path: String, lines: List[String]) raises:
@@ -23,7 +30,7 @@ fn strings_for_writing(size: Int) -> List[String]:
 
 fn test_read_until(file: Path, expected_lines: List[String]) raises:
     var fh = open(file, "r")
-    var reader = FileReader(fh^, buffer_size=1024)
+    var reader = FileReader(fh^, buffer_size=100)
     var buffer = List[UInt8]()
     var counter = 0
     while reader.read_until(buffer) != 0:
@@ -46,12 +53,8 @@ fn test_for_each_line(file: Path, expected_lines: List[String]) raises:
     var found_bad = False
 
     @parameter
-    fn inner(
-        buffer: Tensor[DType.uint8], start: Int, end: Int
-    ) capturing -> None:
-        if slice_tensor(buffer, start, end) != List(
-            expected_lines[counter].as_bytes()
-        ):
+    fn inner(buffer: Span[UInt8], start: Int, end: Int) capturing -> None:
+        if s(buffer[start:end]) != expected_lines[counter]:
             found_bad = True
         counter += 1
 
