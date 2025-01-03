@@ -3,8 +3,9 @@ authors = ["Seth Stadick <sstadick@gmail.com>"]
 channels = ["conda-forge", "https://conda.modular.com/max"]
 description = "Useful things that aren't in the standard library."
 name = "ExtraMojo"
-platforms = ["osx-arm64"]
-version = "0.3.0"
+platforms = ["osx-arm64", "linux-64"]
+version = "0.3.1"
+license = "Unlicense OR MIT"
 
 [tasks]
 build = "magic run mojo package ExtraMojo -o ExtraMojo.mojopkg"
